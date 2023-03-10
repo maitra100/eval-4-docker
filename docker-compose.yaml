@@ -1,0 +1,79 @@
+version: "3"
+services:
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "6380:6379"
+  authdb:
+    image: postgres
+    restart: always
+    volumes:
+      - ./dataauth:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: users
+      NODE_ENV: docker
+    ports:
+      - "5433:5432"
+  backenddb:
+    container_name: backenddb
+    image: postgres
+    restart: always
+    volumes:
+      - ./databackend:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: backendDB
+      NODE_ENV: docker
+    ports:
+      - "5434:5432"
+  auth-migration:
+    build:
+      context: ../auth/
+      dockerfile: Dockerfile.migrations
+    environment:
+      NODE_ENV: docker
+    depends_on:
+      - authdb
+      - redis
+  auth-service:
+    build: ../auth/
+    restart: always
+    depends_on:
+      - authdb
+      - redis
+      - auth-migration
+    ports:
+      - "8080:8080"
+    environment:
+      NUMBER_OF_SALTS_ROUNDS: 10
+      JWT_SECRET_KEY: secret-key
+      NODE_ENV: docker
+  backend-migration:
+    build:
+      context: ../backendService/
+      dockerfile: Dockerfile.migrations
+    environment:
+      NODE_ENV: docker
+    depends_on:
+      - backenddb
+      - redis
+  backend-server:
+    build: ../backendService
+    restart: always
+    depends_on:
+      - auth-service
+      - backend-migration
+    ports:
+      - "8081:8081"
+    environment:
+      NODE_ENV: docker
+      AUTH_URL: docker.for.mac.localhost
