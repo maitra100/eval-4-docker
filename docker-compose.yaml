@@ -8,8 +8,6 @@ services:
   authdb:
     image: postgres
     restart: always
-    volumes:
-      - ./dataauth:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 10s
@@ -26,8 +24,6 @@ services:
     container_name: backenddb
     image: postgres
     restart: always
-    volumes:
-      - ./databackend:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
@@ -37,7 +33,7 @@ services:
       - "5434:5432"
   auth-migration:
     build:
-      context: ../auth/
+      context: ../Evaluation-4-auth/
       dockerfile: Dockerfile.migrations
     environment:
       NODE_ENV: docker
@@ -45,7 +41,7 @@ services:
       - authdb
       - redis
   auth-service:
-    build: ../auth/
+    build: ../Evaluation-4-auth/
     restart: always
     depends_on:
       - authdb
@@ -55,11 +51,12 @@ services:
       - "8080:8080"
     environment:
       NUMBER_OF_SALTS_ROUNDS: 10
-      JWT_SECRET_KEY: secret-key
+      SECRET_KEY: secret-key
       NODE_ENV: docker
+      PORT: 8080
   backend-migration:
     build:
-      context: ../backendService/
+      context: ../Evaluation-4-backendService/
       dockerfile: Dockerfile.migrations
     environment:
       NODE_ENV: docker
@@ -67,7 +64,7 @@ services:
       - backenddb
       - redis
   backend-server:
-    build: ../backendService
+    build: ../Evaluation-4-backendService
     restart: always
     depends_on:
       - auth-service
@@ -77,3 +74,4 @@ services:
     environment:
       NODE_ENV: docker
       AUTH_URL: docker.for.mac.localhost
+      PORT: 8081
